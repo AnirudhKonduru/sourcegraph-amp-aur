@@ -1,10 +1,10 @@
 # Maintainer: Anirudh Konduru <anirudhmkonduru@gmail.com>
 
 _npmname=@sourcegraph/amp
-_npmver=0.0.1749196899-g16ba82 # renovate: datasource=npm depName=@sourcegraph/amp
+_npmver=0.0.1749211345-g16cdfc # renovate: datasource=npm depName=@sourcegraph/amp
 _basename=amp
 pkgname=sourcegraph-amp # All lowercase
-pkgver=0.0.1749196899_g16ba82
+pkgver=0.0.1749211345_g16cdfc
 pkgrel=1
 pkgdesc="CLI for Amp, an agentic coding tool in research preview from Sourcegraph."
 arch=(any)
@@ -15,7 +15,7 @@ makedepends=('npm')
 optdepends=()
 source=(https://registry.npmjs.org/$_npmname/-/$_basename-$_npmver.tgz)
 noextract=($_basename-$_npmver.tgz)
-sha1sums=('3a73001c14169c641e5b3a43c3ac349bb377dae2')
+sha1sums=('494c32bcff1ba1571e241591ed6d71542ec0d1af')
 
 package() {
   cd "$srcdir"
