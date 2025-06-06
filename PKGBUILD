@@ -1,7 +1,7 @@
 # Maintainer: Anirudh Konduru <anirudhmkonduru@gmail.com>
 
 _npmname=@sourcegraph/amp
-_npmver=0.0.1749182771-gb19aef
+_npmver=0.0.1749182771-gb19aef # renovate: datasource=npm depName=@sourcegraph/amp
 _basename=amp
 pkgname=sourcegraph-amp # All lowercase
 pkgver=0.0.1749182771_gb19aef
