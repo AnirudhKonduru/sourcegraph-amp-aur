@@ -120,9 +120,13 @@ update_checksums() {
 			updpkgsums
 			log "✅ Updated checksums with updpkgsums" "$GREEN"
 		else
-			log "❌ updpkgsums not found - please install pacman-contrib" "$RED"
-			cp PKGBUILD.backup PKGBUILD
-			exit 1
+			# Fallback for CI environments without updpkgsums
+			log "🔄 updpkgsums not found - using manual checksum calculation" "$YELLOW"
+			wget -q "https://registry.npmjs.org/@sourcegraph/amp/-/amp-$latest_npmver.tgz"
+			new_checksum=$(sha256sum "amp-$latest_npmver.tgz" | cut -d' ' -f1)
+			sed -i "s/^sha256sums=.*/sha256sums=('$new_checksum')/" PKGBUILD
+			rm -f "amp-$latest_npmver.tgz"
+			log "✅ Updated checksums manually" "$GREEN"
 		fi
 	else
 		log "❌ URL test failed - restoring backup" "$RED"
