@@ -1,25 +1,33 @@
+# Maintainer: Anirudh Konduru <anirudhmkonduru@gmail.com>
+
 _npmname=@sourcegraph/amp
 _npmver=0.0.1749182771-gb19aef
+_basename=amp
 pkgname=sourcegraph-amp # All lowercase
 pkgver=0.0.1749182771_gb19aef
 pkgrel=1
 pkgdesc="CLI for Amp, an agentic coding tool in research preview from Sourcegraph."
 arch=(any)
 url="https://ampcode.com/"
-license=()
+license=('custom')
 depends=('nodejs')
 makedepends=('npm')
 optdepends=()
-source=(https://registry.npmjs.org/$_npmname/-/$_npmname-$_npmver.tgz)
-noextract=($_npmname-$_npmver.tgz)
-sha1sums=('SKIP')
+source=(https://registry.npmjs.org/$_npmname/-/$_basename-$_npmver.tgz)
+noextract=($_basename-$_npmver.tgz)
+sha1sums=('078d17a6c8b27c71a772e829d7e918565634afef')
 
 package() {
-  cd $srcdir
+  cd "$srcdir"
   local _npmdir="$pkgdir/usr/lib/node_modules/"
-  mkdir -p $_npmdir
-  cd $_npmdir
-  npm install -g --prefix "$pkgdir/usr" $_npmname@$_npmver
+  mkdir -p "$_npmdir"
+  cd "$_npmdir"
+  npm install -g --prefix "$pkgdir/usr" "$_npmname@$_npmver"
+
+  # Remove references to build directories
+  # https://wiki.archlinux.org/title/Node.js_package_guidelines#Package_contains_reference_to_$srcdir/$pkgdir
+  find "$pkgdir" -name package.json -print0 | xargs -r -0 sed -i '/_where/d'
+
   chown -R root:root "$pkgdir"
 }
 
