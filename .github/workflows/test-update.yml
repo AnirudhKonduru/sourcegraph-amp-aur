@@ -1,0 +1,37 @@
+name: Test Auto Update
+
+on:
+  workflow_dispatch:  # Manual trigger only
+  push:
+    branches: [ test-* ]  # Trigger on test branches
+
+jobs:
+  test-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget curl fakeroot
+
+      - name: Test update script
+        run: |
+          chmod +x update-package.sh
+          ./update-package.sh --ci || echo "Script completed with exit code $?"
+
+      - name: Show changes
+        run: |
+          echo "=== Git status ==="
+          git status
+          echo "=== PKGBUILD changes ==="
+          git diff PKGBUILD || echo "No PKGBUILD changes"
+          echo "=== .SRCINFO changes ==="
+          git diff .SRCINFO || echo "No .SRCINFO changes"

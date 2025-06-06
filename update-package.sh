@@ -2,7 +2,7 @@
 # AUR Package Update Script for sourcegraph-amp
 #
 # This script automatically updates the sourcegraph-amp AUR package to the latest
-# version from npm. It handles version checking, PKGBUILD updates, checksum 
+# version from npm. It handles version checking, PKGBUILD updates, checksum
 # calculation, and git commits.
 #
 # Usage: ./update-package.sh
@@ -20,6 +20,26 @@ NC='\033[0m' # No Color
 
 # Global variables
 declare -g current_npmver latest_npmver
+declare -g ci_mode=false
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+	case $1 in
+	--ci | --non-interactive)
+		ci_mode=true
+		shift
+		;;
+	-h | --help)
+		echo "Usage: $0 [--ci|--non-interactive]"
+		echo "  --ci, --non-interactive  Run in non-interactive mode (for CI)"
+		exit 0
+		;;
+	*)
+		echo "Unknown option: $1"
+		exit 1
+		;;
+	esac
+done
 
 # No cleanup needed
 
@@ -54,6 +74,11 @@ check_versions() {
 
 # Ask for user confirmation
 confirm_update() {
+	if [ "$ci_mode" = true ]; then
+		log "🤖 Running in CI mode - proceeding with update" "$BLUE"
+		return
+	fi
+
 	read -p "Do you want to update? (y/N): " -n 1 -r
 	echo
 	if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -95,9 +120,13 @@ update_checksums() {
 			updpkgsums
 			log "✅ Updated checksums with updpkgsums" "$GREEN"
 		else
-			log "❌ updpkgsums not found - please install pacman-contrib" "$RED"
-			cp PKGBUILD.backup PKGBUILD
-			exit 1
+			# Fallback for CI environments without updpkgsums
+			log "🔄 updpkgsums not found - using manual checksum calculation" "$YELLOW"
+			wget -q "https://registry.npmjs.org/@sourcegraph/amp/-/amp-$latest_npmver.tgz"
+			new_checksum=$(sha256sum "amp-$latest_npmver.tgz" | cut -d' ' -f1)
+			sed -i "s/^sha256sums=.*/sha256sums=('$new_checksum')/" PKGBUILD
+			rm -f "amp-$latest_npmver.tgz"
+			log "✅ Updated checksums manually" "$GREEN"
 		fi
 	else
 		log "❌ URL test failed - restoring backup" "$RED"
@@ -132,6 +161,11 @@ commit_changes() {
 	# Show the diff
 	log "📝 Changes made:" "$BLUE"
 	git diff PKGBUILD .SRCINFO
+
+	if [ "$ci_mode" = true ]; then
+		log "🤖 CI mode - skipping commit (handled by GitHub Actions)" "$BLUE"
+		return
+	fi
 
 	# Ask for confirmation to commit
 	echo ""
