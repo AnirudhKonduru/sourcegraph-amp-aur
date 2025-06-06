@@ -7,11 +7,16 @@
     ":semanticCommitScope(deps)",
     "helpers:pinGitHubActionDigests"
   ],
-  "baseBranches": ["master", "github-action-test"],
+  "baseBranches": [
+    "master",
+    "github-action-test"
+  ],
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^PKGBUILD$"],
+      "managerFilePatterns": [
+        "/^PKGBUILD$/"
+      ],
       "matchStrings": [
         "_npmver=(?<currentValue>.*) # renovate: datasource=(?<datasource>.*) depName=(?<depName>.*)"
       ],
