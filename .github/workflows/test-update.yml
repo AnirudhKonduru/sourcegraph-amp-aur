@@ -1,0 +1,87 @@
+name: Test Update (No Deploy)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [test-*]
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      needs-update: ${{ steps.check.outputs.needs-update }}
+      new-version: ${{ steps.check.outputs.new-version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for new npm version
+        id: check
+        run: |
+          # Get current version from PKGBUILD
+          current_version=$(grep "^_npmver=" PKGBUILD | cut -d'=' -f2 | cut -d' ' -f1)
+          echo "Current version: $current_version"
+          
+          # Get latest version from npm
+          latest_version=$(npm view @sourcegraph/amp version)
+          echo "Latest version: $latest_version"
+          
+          if [ "$current_version" != "$latest_version" ]; then
+            echo "needs-update=true" >> $GITHUB_OUTPUT
+            echo "new-version=$latest_version" >> $GITHUB_OUTPUT
+            echo "Update needed: $current_version -> $latest_version"
+          else
+            echo "needs-update=false" >> $GITHUB_OUTPUT
+            echo "No update needed"
+          fi
+
+  test-update-process:
+    needs: check-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Simulate update (if needed)
+        if: needs.check-version.outputs.needs-update == 'true'
+        run: |
+          new_version="${{ needs.check-version.outputs.new-version }}"
+          echo "Would update to: $new_version"
+          
+          # Show what the new PKGBUILD would look like
+          cp PKGBUILD PKGBUILD.new
+          sed -i "s/^_npmver=.*/_npmver=$new_version # renovate: datasource=npm depName=@sourcegraph\/amp/" PKGBUILD.new
+          
+          pkgver=$(echo "$new_version" | sed 's/-/_/g')
+          sed -i "s/^pkgver=.*/pkgver=$pkgver/" PKGBUILD.new
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD.new
+          
+          echo "=== NEW PKGBUILD WOULD BE ==="
+          cat PKGBUILD.new
+          
+      - name: Test checksum update
+        if: needs.check-version.outputs.needs-update == 'true'
+        run: |
+          new_version="${{ needs.check-version.outputs.new-version }}"
+          url="https://registry.npmjs.org/@sourcegraph/amp/-/amp-$new_version.tgz"
+          
+          echo "Testing download: $url"
+          if curl -L --fail "$url" -o temp.tgz; then
+            new_checksum=$(sha1sum temp.tgz | cut -d' ' -f1)
+            echo "New checksum would be: $new_checksum"
+            rm temp.tgz
+          else
+            echo "ERROR: Could not download new version"
+            exit 1
+          fi
+
+      - name: Show results
+        run: |
+          echo "=== TEST RESULTS ==="
+          echo "Needs update: ${{ needs.check-version.outputs.needs-update }}"
+          echo "Current workflow working: ✅"
+          if [ "${{ needs.check-version.outputs.needs-update }}" = "true" ]; then
+            echo "Ready for real deployment!"
+          else
+            echo "No update needed right now"
+          fi

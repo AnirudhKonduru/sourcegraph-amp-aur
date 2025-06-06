@@ -1,0 +1,47 @@
+name: Publish to AUR
+
+on:
+  push:
+    branches:
+      - master
+      - github-action-test
+    paths:
+      - 'PKGBUILD'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Find updated package
+        run: |
+          #!/usr/bin/env bash
+          set -euxo pipefail
+
+          echo "pkgbuild=$(git diff --name-only HEAD HEAD~1 "*/.SRCINFO" | head -1 | xargs dirname)" >> $GITHUB_ENV
+
+      - name: Deploy to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@2ac5a4c1d7035885d46b10e3193393be8460b6f1 # v4.1.1
+        if: ${{ env.pkgbuild != '' && github.ref == 'refs/heads/master' }}
+        with:
+          pkgname: sourcegraph-amp
+          pkgbuild: ./PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+
+      - name: Test Mode (Skip AUR Deploy)
+        if: ${{ env.pkgbuild != '' && github.ref == 'refs/heads/github-action-test' }}
+        run: |
+          echo "🧪 TEST MODE: Would deploy to AUR with:"
+          echo "Package: sourcegraph-amp"
+          echo "PKGBUILD: ./PKGBUILD"
+          echo "Files that would be deployed:"
+          ls -la PKGBUILD .SRCINFO
+          echo ""
+          echo "PKGBUILD content:"
+          cat PKGBUILD

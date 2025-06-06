@@ -1,0 +1,7 @@
+name: 'Update AUR Package Checksums'
+description: 'Update PKGBUILD checksums and generate .SRCINFO using real Arch Linux environment'
+author: 'Your Name'
+
+runs:
+  using: docker
+  image: 'Dockerfile'
