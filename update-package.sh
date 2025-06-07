@@ -91,10 +91,6 @@ confirm_update() {
 update_pkgbuild() {
 	log "🔧 Updating package..." "$BLUE"
 
-	# Backup current PKGBUILD
-	cp PKGBUILD PKGBUILD.backup
-	echo "Backed up PKGBUILD to PKGBUILD.backup"
-
 	# Update _npmver (preserve any existing comment)
 	sed -i "s/^_npmver=[^# ]*/_npmver=$latest_npmver/" PKGBUILD
 	log "✅ Updated _npmver" "$GREEN"
@@ -125,8 +121,8 @@ update_checksums() {
 			exit 1
 		fi
 	else
-		log "❌ URL test failed - restoring backup" "$RED"
-		cp PKGBUILD.backup PKGBUILD
+		log "❌ URL test failed - restoring original PKGBUILD" "$RED"
+		git checkout -- PKGBUILD
 		exit 1
 	fi
 }
@@ -172,7 +168,7 @@ commit_changes() {
 		echo
 		if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 			log "Commit cancelled. Changes are still applied to files." "$YELLOW"
-			log "🔄 To restore backup: cp PKGBUILD.backup PKGBUILD" "$BLUE"
+			log "🔄 To restore original: git checkout -- PKGBUILD .SRCINFO" "$BLUE"
 			exit 0
 		fi
 	fi
