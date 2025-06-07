@@ -4,7 +4,7 @@ _npmname=@sourcegraph/amp
 _npmver=0.0.1749256326-gf8b1cf # renovate: datasource=npm depName=@sourcegraph/amp
 _basename=amp
 pkgname=sourcegraph-amp # All lowercase
-pkgver=0.0.1749256326_gf8b1cf
+pkgver=${_npmver//-/_}
 pkgrel=1
 pkgdesc="CLI for Amp, an agentic coding tool in research preview from Sourcegraph."
 arch=(any)
