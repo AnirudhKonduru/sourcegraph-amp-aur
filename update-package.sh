@@ -2,7 +2,7 @@
 # AUR Package Update Script for sourcegraph-amp
 #
 # This script automatically updates the sourcegraph-amp AUR package to the latest
-# version from npm. It handles version checking, PKGBUILD updates, checksum 
+# version from npm. It handles version checking, PKGBUILD updates, checksum
 # calculation, and git commits.
 #
 # Usage: ./update-package.sh
@@ -20,6 +20,26 @@ NC='\033[0m' # No Color
 
 # Global variables
 declare -g current_npmver latest_npmver
+declare -g ci_mode=false
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+	case $1 in
+	--ci | --non-interactive)
+		ci_mode=true
+		shift
+		;;
+	-h | --help)
+		echo "Usage: $0 [--ci|--non-interactive]"
+		echo "  --ci, --non-interactive  Run in non-interactive mode (for CI)"
+		exit 0
+		;;
+	*)
+		echo "Unknown option: $1"
+		exit 1
+		;;
+	esac
+done
 
 # No cleanup needed
 
@@ -54,6 +74,11 @@ check_versions() {
 
 # Ask for user confirmation
 confirm_update() {
+	if [ "$ci_mode" = true ]; then
+		log "🤖 Running in CI mode - proceeding with update" "$BLUE"
+		return
+	fi
+
 	read -p "Do you want to update? (y/N): " -n 1 -r
 	echo
 	if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -131,16 +156,25 @@ commit_changes() {
 
 	# Show the diff
 	log "📝 Changes made:" "$BLUE"
-	git diff PKGBUILD .SRCINFO
+	if [ "$ci_mode" = true ]; then
+		git --no-pager diff PKGBUILD .SRCINFO
+	else
+		git diff PKGBUILD .SRCINFO
+	fi
 
-	# Ask for confirmation to commit
-	echo ""
-	read -p "Do you want to commit these changes? (y/N): " -n 1 -r
-	echo
-	if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-		log "Commit cancelled. Changes are still applied to files." "$YELLOW"
-		log "🔄 To restore backup: cp PKGBUILD.backup PKGBUILD" "$BLUE"
-		exit 0
+	# Commit automatically in CI mode
+	if [ "$ci_mode" = true ]; then
+		log "🤖 CI mode - automatically committing changes..." "$BLUE"
+	else
+		# Ask for confirmation to commit
+		echo ""
+		read -p "Do you want to commit these changes? (y/N): " -n 1 -r
+		echo
+		if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+			log "Commit cancelled. Changes are still applied to files." "$YELLOW"
+			log "🔄 To restore backup: cp PKGBUILD.backup PKGBUILD" "$BLUE"
+			exit 0
+		fi
 	fi
 
 	# Commit the changes
@@ -149,8 +183,10 @@ commit_changes() {
 	git commit -m "chore(deps): update @sourcegraph/amp to $latest_npmver"
 	log "✅ Changes committed successfully!" "$GREEN"
 
-	echo ""
-	log "🔄 To undo: git reset --hard HEAD~1" "$BLUE"
+	if [ "$ci_mode" = false ]; then
+		echo ""
+		log "🔄 To undo: git reset --hard HEAD~1" "$BLUE"
+	fi
 }
 
 # Main execution
