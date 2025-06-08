@@ -22,5 +22,12 @@
       "extractVersionTemplate": "^v?(?<version>.*)$",
       "autoReplaceStringTemplate": "_npmver={{{newValue}}} # renovate: datasource={{{datasource}}} depName={{{depName}}}"
     }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["@sourcegraph/amp"],
+      "minimumReleaseAge": null,
+      "prCreation": "immediate"
+    }
   ]
 }
