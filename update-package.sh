@@ -65,11 +65,10 @@ check_versions() {
 
 	# Check if update is needed
 	if [ "$current_npmver" = "$latest_npmver" ]; then
-		log "✅ Already up to date!" "$GREEN"
-		exit 0
+		log "📦 Version current, checking checksums and .SRCINFO..." "$BLUE"
+	else
+		log "📦 Update available: $current_npmver → $latest_npmver" "$YELLOW"
 	fi
-
-	log "📦 Update available: $current_npmver → $latest_npmver" "$YELLOW"
 }
 
 # Ask for user confirmation
@@ -138,18 +137,13 @@ generate_srcinfo() {
 
 # Show summary and commit changes
 commit_changes() {
+	# Check if there are any changes to commit
+	if git diff --quiet sourcegraph-amp/PKGBUILD sourcegraph-amp/.SRCINFO; then
+		log "✅ No changes needed!" "$GREEN"
+		return
+	fi
+
 	log "🎉 Update completed successfully!" "$GREEN"
-	echo ""
-	log "📋 Summary of changes:" "$BLUE"
-
-	# Calculate pkgver for display
-	pkgver_new=${latest_npmver//-/_}
-
-	echo "• _npmver: $current_npmver → $latest_npmver"
-	echo "• pkgver: → $pkgver_new"
-	echo "• pkgrel: → 1"
-	echo "• checksums: updated"
-	echo "• .SRCINFO: regenerated"
 	echo ""
 
 	# Show the diff
@@ -171,7 +165,7 @@ commit_changes() {
 		if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 			log "Commit cancelled. Changes are still applied to files." "$YELLOW"
 			log "🔄 To restore original: git checkout -- sourcegraph-amp/PKGBUILD sourcegraph-amp/.SRCINFO" "$BLUE"
-			exit 0
+			return
 		fi
 	fi
 
