@@ -14,7 +14,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "(^|/)PKGBUILD$"
+        "**/PKGBUILD"
       ],
       "matchStrings": [
         "_npmver=(?<currentValue>.*) # renovate: datasource=(?<datasource>.*) depName=(?<depName>.*)"
