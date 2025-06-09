@@ -109,3 +109,11 @@ jobs:
           gh pr merge $PR_NUMBER --rebase --admin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Publish to AUR after successful update
+      - name: Publish to AUR
+        if: steps.update.outputs.needs_update == 'true'
+        uses: ./.github/actions/publish-aur
+        with:
+          aur_ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          package_directory: sourcegraph-amp
