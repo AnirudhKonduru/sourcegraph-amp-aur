@@ -2,7 +2,7 @@ name: Update Package Version
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    - cron: '0 */2 * * *'  # Every 2 hours
   workflow_dispatch:  # Allow manual trigger
   pull_request:
     paths:
@@ -110,7 +110,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Publish to AUR after successful update
+      # Sync to main and publish to AUR after successful update
+      - name: Sync to main branch before publishing
+        if: steps.update.outputs.needs_update == 'true'
+        run: |
+          git fetch origin
+          git checkout ${{ github.ref_name }}
+          git reset --hard origin/${{ github.ref_name }}
+
       - name: Publish to AUR
         if: steps.update.outputs.needs_update == 'true'
         uses: ./.github/actions/publish-aur
