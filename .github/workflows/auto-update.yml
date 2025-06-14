@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check if update is needed
-        id: early-check
+        id: version-check
         run: |
           chmod +x pkg.sh
           if output=$(./pkg.sh check-latest); then
@@ -34,11 +34,11 @@ jobs:
           fi
 
       - name: Set up Docker Buildx
-        if: steps.early-check.outputs.update_needed == 'true'
+        if: steps.version-check.outputs.update_needed == 'true'
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3
 
       - name: Build and run update in Arch container
-        if: steps.early-check.outputs.update_needed == 'true'
+        if: steps.version-check.outputs.update_needed == 'true'
         run: |
           # Build the container with caching
           docker buildx build \
@@ -73,45 +73,30 @@ jobs:
           echo "=== .SRCINFO changes ==="
           git diff sourcegraph-amp/.SRCINFO || echo "No .SRCINFO changes"
 
-      - name: Check for version changes
-        id: update
-        run: |
-          # Compare versions between HEAD and previous commit
-          current_ver=$(./pkg.sh get-version HEAD)
-          prev_ver=$(./pkg.sh get-version HEAD~1)
-
-          if [[ "$current_ver" != "$prev_ver" ]]; then
-            echo "needs_update=true" >> $GITHUB_OUTPUT
-            echo "updated_version=$current_ver" >> $GITHUB_OUTPUT
-            echo "✅ Version changed from $prev_ver to $current_ver"
-          else
-            echo "needs_update=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No version change detected"
-          fi
-
       # Handle updates to existing PRs (renovate, manual PRs)
       - name: Push updates to existing PR
-        if: github.event_name == 'pull_request' && steps.update.outputs.needs_update == 'true'
+        if: github.event_name == 'pull_request' && steps.version-check.outputs.update_needed == 'true'
         run: git push
 
       # Handle scheduled/manual runs - create new PR and auto-merge
       - name: Create and auto-merge new PR
-        if: github.event_name != 'pull_request' && steps.update.outputs.needs_update == 'true'
+        if: github.event_name != 'pull_request' && steps.version-check.outputs.update_needed == 'true'
         run: |
           # Create and push branch
-          BRANCH_NAME="update/amp-${{ steps.update.outputs.updated_version }}"
+          updated_ver=$(./pkg.sh get-version)
+          BRANCH_NAME="update/amp-$updated_ver"
           git checkout -b "$BRANCH_NAME"
           git push origin "$BRANCH_NAME"
 
           # Create PR
           PR_URL=$(gh pr create \
-            --title "Update @sourcegraph/amp to ${{ steps.update.outputs.updated_version }}" \
+            --title "Update @sourcegraph/amp to $updated_ver" \
             --body "🤖 **Automated package update**
 
-          Updates \`@sourcegraph/amp\` to \`${{ steps.update.outputs.updated_version }}\`
+          Updates \`@sourcegraph/amp\` to \`$updated_ver\`
 
           **Changes:**
-          - Updated \`_npmver\` to \`${{ steps.update.outputs.updated_version }}\`
+          - Updated \`_npmver\` to \`$updated_ver\`
           - Reset \`pkgrel\` to \`1\`
           - Updated checksums
           - Regenerated \`.SRCINFO\`
@@ -127,14 +112,14 @@ jobs:
 
       # Sync to main and publish to AUR after successful update
       - name: Sync to main branch before publishing
-        if: steps.update.outputs.needs_update == 'true'
+        if: steps.version-check.outputs.update_needed == 'true'
         run: |
           git fetch origin
           git checkout ${{ github.ref_name }}
           git reset --hard origin/${{ github.ref_name }}
 
       - name: Publish to AUR
-        if: steps.update.outputs.needs_update == 'true'
+        if: steps.version-check.outputs.update_needed == 'true'
         uses: ./.github/actions/publish-aur
         with:
           aur_ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
