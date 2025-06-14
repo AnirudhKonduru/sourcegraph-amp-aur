@@ -23,7 +23,7 @@ makepkg -si
 ```
 
 This package is maintained using [aurpublish](https://github.com/eli-schwartz/aurpublish/).
-To update the package, run `./update-package.sh` to check for new versions of the program,
+To update the package, run `./pkg.sh update` to check for new versions of the program,
 update the PKGBUILD and .SRCINFO files, and commit the changes.
 Then, run `aurpublish` to push the changes to the AUR.
 

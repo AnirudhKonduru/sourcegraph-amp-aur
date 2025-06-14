@@ -22,24 +22,13 @@ runs:
         #!/usr/bin/env bash
         set -euo pipefail
 
-        # Get current version from PKGBUILD
-        current_ver=$(awk -F'=' '/^_npmver=/ {print $2}' ${{ inputs.package_directory }}/PKGBUILD | tr -d ' ')
+        # Compare versions between HEAD and previous commit
+        current_ver=$(./pkg.sh get-version HEAD ${{ inputs.package_directory }}/PKGBUILD)
+        prev_ver=$(./pkg.sh get-version HEAD~1 ${{ inputs.package_directory }}/PKGBUILD)
 
-        # Get previous version from the last commit
-        if git show HEAD~1:${{ inputs.package_directory }}/PKGBUILD >/dev/null 2>&1; then
-          previous_ver=$(git show HEAD~1:${{ inputs.package_directory }}/PKGBUILD | awk -F'=' '/^_npmver=/ {print $2}' | tr -d ' ')
-        else
-          # First commit, treat as new version
-          previous_ver=""
-        fi
-
-        echo "Current version: $current_ver"
-        echo "Previous version: $previous_ver"
-
-        if [ "$current_ver" != "$previous_ver" ] && [ -n "$current_ver" ]; then
+        if [[ "$current_ver" != "$prev_ver" ]]; then
           echo "version_changed=true" >> $GITHUB_OUTPUT
-          echo "new_version=$current_ver" >> $GITHUB_OUTPUT
-          echo "✅ Version changed from $previous_ver to $current_ver"
+          echo "✅ Version changed from $prev_ver to $current_ver"
         else
           echo "version_changed=false" >> $GITHUB_OUTPUT
           echo "ℹ️ No version change detected"

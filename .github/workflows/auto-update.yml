@@ -20,10 +20,25 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
           fetch-depth: 0
 
+      - name: Check if update is needed
+        id: early-check
+        run: |
+          chmod +x pkg.sh
+          if output=$(./pkg.sh check-latest); then
+            echo "update_needed=true" >> $GITHUB_OUTPUT
+            echo "$output" >> $GITHUB_OUTPUT
+            echo "✅ Update available - proceeding with Docker build"
+          else
+            echo "update_needed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No update needed - skipping Docker build"
+          fi
+
       - name: Set up Docker Buildx
+        if: steps.early-check.outputs.update_needed == 'true'
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3
 
       - name: Build and run update in Arch container
+        if: steps.early-check.outputs.update_needed == 'true'
         run: |
           # Build the container with caching
           docker buildx build \
@@ -41,7 +56,7 @@ jobs:
             arch-builder \
             bash -c "
               chown -R builder:builder /workspace &&
-              su - builder -c 'cd /workspace && chmod +x update-package.sh && ./update-package.sh --ci'
+              su - builder -c 'cd /workspace && chmod +x pkg.sh && ./pkg.sh update --ci'
             "
 
       - name: Fix file permissions
@@ -58,20 +73,20 @@ jobs:
           echo "=== .SRCINFO changes ==="
           git diff sourcegraph-amp/.SRCINFO || echo "No .SRCINFO changes"
 
-      - name: Check for new commits
+      - name: Check for version changes
         id: update
         run: |
-          # Check if there are any new commits (indicating an update was made)
-          if [ -n "$(git log --oneline HEAD ^origin/${{ github.ref_name }} 2>/dev/null)" ]; then
-            # New commit exists, get version from latest commit
-            updated_ver=$(awk -F'=' '/^_npmver=/ {print $2}' sourcegraph-amp/PKGBUILD | cut -d' ' -f1)
-            echo "updated_version=$updated_ver" >> $GITHUB_OUTPUT
+          # Compare versions between HEAD and previous commit
+          current_ver=$(./pkg.sh get-version HEAD)
+          prev_ver=$(./pkg.sh get-version HEAD~1)
+
+          if [[ "$current_ver" != "$prev_ver" ]]; then
             echo "needs_update=true" >> $GITHUB_OUTPUT
-            echo "✅ Update committed for version $updated_ver"
+            echo "updated_version=$current_ver" >> $GITHUB_OUTPUT
+            echo "✅ Version changed from $prev_ver to $current_ver"
           else
-            # No new commits, no update needed
             echo "needs_update=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No update needed"
+            echo "ℹ️ No version change detected"
           fi
 
       # Handle updates to existing PRs (renovate, manual PRs)
