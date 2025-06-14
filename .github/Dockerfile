@@ -1,13 +1,11 @@
-FROM archlinux:latest
+FROM archlinux:base-devel
 
-# Install all required packages in one layer
+# Install additional required packages
 RUN pacman -Syu --noconfirm \
-    base-devel \
     git \
     nodejs \
     npm \
     pacman-contrib \
-    sudo \
     && pacman -Scc --noconfirm
 
 # Create builder user with sudo privileges
